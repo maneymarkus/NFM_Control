@@ -5,6 +5,8 @@ name = "pypi"
 
 [packages]
 requests = "*"
+python-telegram-bot = "*"
+python-dotenv = "*"
 
 [dev-packages]
 
