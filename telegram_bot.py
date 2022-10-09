@@ -31,6 +31,17 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext) -> Non
     )
 
 
+def echo(update: telegram.Update, context: telegram.ext.CallbackContext) -> None:
+    update.message.reply_text(update.message.text)
+
+
+def inline_query(update: telegram.Update, context: telegram.ext.CallbackContext) -> None:
+    query = update.inline_query
+    text = query.query
+    print(text)
+    query.from_user.send_message(text)
+
+
 if __name__ == "__main__":
     #m = "Hello Channel"
     #post_message(m)
@@ -39,6 +50,10 @@ if __name__ == "__main__":
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(telegram.ext.CommandHandler("start", start))
+
+    #dispatcher.add_handler(telegram.ext.MessageHandler(telegram.ext.Filters.text & ~telegram.ext.Filters.command, echo))
+
+    dispatcher.add_handler(telegram.ext.InlineQueryHandler(inline_query))
 
     updater.start_polling()
 
