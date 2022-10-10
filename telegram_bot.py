@@ -1,5 +1,4 @@
 import dotenv
-import os
 import telegram
 import telegram.ext
 
@@ -23,9 +22,9 @@ def post_message(message: str):
     return True
 
 
-def start(update: telegram.Update, context: telegram.ext.CallbackContext) -> None:
+async def start(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
-    update.message.reply_markdown_v2(
+    await update.message.reply_markdown_v2(
         rf"Hi {user.mention_markdown_v2()}\!",
         reply_markup=telegram.ForceReply(selective=True)
     )
@@ -42,19 +41,21 @@ def inline_query(update: telegram.Update, context: telegram.ext.CallbackContext)
     query.from_user.send_message(text)
 
 
+async def receive_channel_message(update: telegram.Update, context: telegram.ext.CallbackContext):
+    print(update)
+    msg = update.effective_message
+    print(str(msg["text"]))
+
+
 if __name__ == "__main__":
     #m = "Hello Channel"
     #post_message(m)
-    updater = telegram.ext.Updater(TELEGRAM_BOT_API_TOKEN)
+    application = telegram.ext.ApplicationBuilder().token(TELEGRAM_BOT_API_TOKEN).build()
 
-    dispatcher = updater.dispatcher
+    start_handler = telegram.ext.CommandHandler("start", start)
+    application.add_handler(start_handler)
 
-    dispatcher.add_handler(telegram.ext.CommandHandler("start", start))
+    message_handler = telegram.ext.MessageHandler(telegram.ext.filters.TEXT & telegram.ext.filters.ChatType.CHANNEL, receive_channel_message)
+    application.add_handler(message_handler)
 
-    #dispatcher.add_handler(telegram.ext.MessageHandler(telegram.ext.Filters.text & ~telegram.ext.Filters.command, echo))
-
-    dispatcher.add_handler(telegram.ext.InlineQueryHandler(inline_query))
-
-    updater.start_polling()
-
-    updater.idle()
+    application.run_polling()
