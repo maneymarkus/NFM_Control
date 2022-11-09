@@ -1,3 +1,4 @@
+from absl import logging
 import random
 
 
@@ -6,7 +7,10 @@ from app.frequency_sensor import FrequencySensor
 
 class FrequencySensorMock(FrequencySensor):
     def get_current_frequency(self) -> float:
-        return round(random.uniform(49.70, 50.30), 3)
+        logging.debug("get current frequency...")
+        frequency = round(random.uniform(49.70, 50.30), 3)
+        logging.debug(f"current frequency: {frequency}")
+        return frequency
 
     @property
     def frequency(self) -> float:

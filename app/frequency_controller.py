@@ -14,15 +14,16 @@ class FrequencyController:
     def get_frequency(self):
         return self.frequency_sensor.frequency
 
-    def get_frequency_per_second(self):
+    def get_frequency_per_second(self, logging_level=logging.INFO):
+        logging.set_verbosity(logging_level)
         while True:
             time.sleep(1 - time.monotonic() % 1)
             frequency = self.get_frequency()
             self.queue.put(frequency)
 
-    def start(self):
+    def start(self, logging_level=logging.INFO):
         logging.info("Start collecting frequencies")
-        self.process = multiprocessing.Process(target=self.get_frequency_per_second)
+        self.process = multiprocessing.Process(target=self.get_frequency_per_second, args=(logging_level, ))
         self.process.start()
 
     def stop(self):

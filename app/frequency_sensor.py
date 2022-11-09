@@ -1,3 +1,5 @@
+from absl import logging
+
 import app.utils as utils
 
 
@@ -13,10 +15,12 @@ class FrequencySensor:
         return response
 
     def get_current_frequency(self) -> float:
+        logging.debug("get current frequency...")
         response = self.collect_data()
         response_body = response.text
 
         frequency = float(utils.extract_tag_content(response_body, "f2"))
+        logging.debug(f"current frequency: {frequency}")
         return frequency
 
     @property

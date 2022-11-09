@@ -10,7 +10,7 @@ def main():
 
     f_sensor = FrequencySensorMock()
     f_controller = FrequencyController(f_sensor)
-    f_controller.start()
+    f_controller.start(logging_level=logging.DEBUG)
     time.sleep(5)
     f_controller.stop()
     print(f_controller.queue.qsize())
