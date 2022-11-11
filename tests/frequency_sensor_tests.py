@@ -5,7 +5,7 @@ from app.frequency_sensor import FrequencySensor
 
 class FrequencySensorTests(unittest.TestCase):
     def setUp(self) -> None:
-        super(FrequencySensorTests, self).setUp()
+        super().setUp()
         self.f_sensor = FrequencySensor()
 
     def tearDown(self) -> None:

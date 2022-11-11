@@ -5,7 +5,7 @@ from app.frequency_sensor_mock import FrequencySensorMock
 
 class FrequencySensorMockTests(unittest.TestCase):
     def setUp(self) -> None:
-        super(FrequencySensorMockTests, self).setUp()
+        super().setUp()
         self.f_sensor_mock = FrequencySensorMock()
 
     def tearDown(self) -> None:
