@@ -8,6 +8,11 @@ requests = "*"
 python-dotenv = "*"
 python-telegram-bot = "*"
 absl-py = "*"
+influxdb = "*"
+influxdb-client = "*"
+pylint = "*"
+click = "*"
+coverage = "*"
 
 [dev-packages]
 
@@ -16,3 +21,9 @@ python_version = "3.10"
 
 [pipenv]
 allow_prereleases = true
+
+[scripts]
+test = "coverage run -m unittest tests"
+# lint the whole directory recursively
+lint = "pylint --recursive=y ."
+coverage = "coverage report"
