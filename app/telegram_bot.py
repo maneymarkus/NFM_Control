@@ -1,61 +1,109 @@
-import dotenv
+from absl import logging
+import multiprocessing
+import pathlib
 import telegram
 import telegram.ext
 
-ENV_VALUES = dotenv.dotenv_values(".env")
-TELEGRAM_BOT_API_TOKEN = ENV_VALUES["TELEGRAM_BOT_API_TOKEN"]
-CHANNEL_CHAT_ID = ENV_VALUES["NETZFREQUENZMESSUNGSKONTROLLE_CHANNEL_CHAT_ID"]
+from app import utils
 
 
-def post_message(message: str):
-    """
-
-    :param message:
-    :return:
-    """
-    try:
-        bot = telegram.Bot(token=TELEGRAM_BOT_API_TOKEN)
-        bot.sendMessage(CHANNEL_CHAT_ID, message)
-    except():
-        # TODO: handle error
-        pass
-    return True
+CHANNEL_CHAT_ID = utils.get_env_value("NETZFREQUENZMESSUNGSKONTROLLE_CHANNEL_CHAT_ID")
 
 
-async def start(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
-    user = update.effective_user
-    await update.message.reply_markdown_v2(
-        rf"Hi {user.mention_markdown_v2()}\!",
-        reply_markup=telegram.ForceReply(selective=True)
-    )
+class TelegramBot:
+    token = utils.get_env_value("TELEGRAM_BOT_API_TOKEN")
+    help_text_file = pathlib.Path("./bot_help_text.txt")
 
+    def __init__(self, channel_chat_id: int = CHANNEL_CHAT_ID):
+        """
+        Initialize Telegram Bot with a channel chat id. Whenever the
+        `self.post_message_to_channel()` method is called the bot will post to this given channel.
 
-def echo(update: telegram.Update, context: telegram.ext.CallbackContext) -> None:
-    update.message.reply_text(update.message.text)
+        :param channel_chat_id:
+        """
+        self.channel_chat_id = channel_chat_id
+        self.bot = telegram.Bot(token=self.token)
+        self.process = None
 
+    def _run_bot(self, logging_level=logging.INFO):
+        """
+        Run the bot and listen to commands
 
-def inline_query(update: telegram.Update, context: telegram.ext.CallbackContext) -> None:
-    query = update.inline_query
-    text = query.query
-    print(text)
-    query.from_user.send_message(text)
+        :param logging_level:
+        :return:
+        """
+        logging.set_verbosity(logging_level)
+        logging.info("Run telegram bot")
 
+        # initialize bot here again because of different threads
+        self.bot = telegram.Bot(token=self.token)
+        application = telegram.ext.ApplicationBuilder().token(self.token).build()
 
-async def receive_channel_message(update: telegram.Update, context: telegram.ext.CallbackContext):
-    print(update)
-    msg = update.effective_message
-    print(str(msg["text"]))
+        application.add_handler(telegram.ext.CommandHandler("help", self.help))
 
+        application.run_polling()
 
-if __name__ == "__main__":
-    #m = "Hello Channel"
-    #post_message(m)
-    application = telegram.ext.ApplicationBuilder().token(TELEGRAM_BOT_API_TOKEN).build()
+    async def help(self, update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) \
+            -> None:
+        """
+        Help command handler to display help text in chat
 
-    start_handler = telegram.ext.CommandHandler("start", start)
-    application.add_handler(start_handler)
+        :param update:
+        :param context:
+        :return:
+        """
+        # standard help text for when the help_text.txt file can not be opened
+        if self.help_text_file.is_file():
+            with open(self.help_text_file, "r", encoding="utf-8") as file:
+                help_text = file.read()
+                file.close()
+        else:
+            help_text = "Du hast die Hilfe angefordert, aber leider ist ein Fehler aufgetreten. " \
+                        "Ich kann dir leider grad die Hilfe nicht anzeigen. Bitte entschuldige " \
+                        "die Umstände und versuch es später erneut."
+            logging.warning(f"The help text file could not be loaded at: {self.help_text_file}")
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id, text=help_text
+        )
 
-    message_handler = telegram.ext.MessageHandler(telegram.ext.filters.TEXT & telegram.ext.filters.ChatType.CHANNEL, receive_channel_message)
-    application.add_handler(message_handler)
+    async def post_message_to_channel(self, message: str) -> bool:
+        """
+        Post a given `message` to the channel the bot got initialized with
 
-    application.run_polling()
+        :param message:
+        :return:
+        """
+        if self.bot is None:
+            raise RuntimeError("The bot is not initialized")
+        async with self.bot:
+            result = await self.bot.send_message(chat_id=self.channel_chat_id, text=message)
+        if result is not None:
+            return True
+        return False
+
+    def start_bot(self, logging_level=logging.INFO):
+        """
+        Start a new thread with this bot running concurrently
+
+        :param logging_level:
+        :return:
+        """
+        if self.process is None:
+            logging.info("Start telegram bot")
+            self.bot = None
+            self.process = multiprocessing.Process(target=self._run_bot, args=(logging_level,))
+            self.process.start()
+            self.bot = telegram.Bot(token=self.token)
+
+    def stop_bot(self):
+        """
+        Stop the thread running this bot concurrently (if a thread is running)
+
+        :return:
+        """
+        if self.process is not None and self.process.is_alive():
+            logging.info("Stop telegram bot")
+            self.process.terminate()
+            self.process.join()
+            self.process.close()
+            self.process = None
